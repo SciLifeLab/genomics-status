@@ -1,9 +1,8 @@
 # Genomics Status
 
-Genomics Status is a Tornado web app for visualizing information and statistics regarding SciLifeLab Genomics platform operations.
+Genomics Status is a Tornado web app for visualizing information and statistics regarding operations by NGI Stockholm at SciLifeLab.
 
-Status interfaces with StatusDB; the CouchDB database instance we're using at SciLifeLab to store metadata in
-various forms. Document specifications for StatusDB are available in the internal wiki. Documentation about CouchDB can be found [here](http://guide.couchdb.org/).
+Genomics Status interfaces with StatusDB; the CouchDB database instance used to store metadata in various forms. Documentation about CouchDB can be found [here](http://guide.couchdb.org/).
 
 ## Installing and running genomics status
 
@@ -169,3 +168,9 @@ Handlers that inherit from ```tornado.web.RequestHandler``` should implement at 
 Tornado templates are a good way to generate dynamic pages server side. The advantage of templates is that you can embeed python code in them. [The official documentation](http://www.tornadoweb.org/en/stable/template.html) is good enough to learn how they work.
 
 On Genomics Status, templates are located in `status/run_dir/design`
+
+
+TODO:
+    - [ ] Fix links to old project page vs new project page
+    - [ ] Add link to project cards from menu and front page
+    

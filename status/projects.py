@@ -125,15 +125,20 @@ class ProjectsBaseDataHandler(SafeHandler):
         # the details key gives values containing multiple udfs on project level
         # and project_summary key gives 'temporary' udfs that will move to 'details'.
         # Include these as normal key:value pairs
+        field_sources = {} # A dictionary to keep track of where the fields come from
+        if 'field_sources' in row.value:
+            field_sources = row.value['field_sources']
         if "project_summary" in row.value:
             for summary_key, summary_value in row.value["project_summary"].items():
                 row.value[summary_key] = summary_value
+                field_sources[summary_key] = "Project Summary Process"
             row.value.pop("project_summary", None)
 
         # If key is in both project_summary and details, details has precedence
         if "details" in row.value:
             for detail_key, detail_value in row.value["details"].items():
                 row.value[detail_key] = detail_value
+                field_sources[detail_key] = f"Project Level UDF: {detail_key}"
             row.value.pop("details", None)
 
         # Handle the pending reviews:
@@ -147,6 +152,7 @@ class ProjectsBaseDataHandler(SafeHandler):
                 ]
             )
             row.value["pending_reviews"] = links
+            field_sources["pending_reviews"] = "LIMS escalation, formatted by Genomics Status (backend)"
 
         ord_det = row.value.get("order_details", {})
         # Try to fetch a name for the contact field, not just an e-mail
@@ -155,6 +161,7 @@ class ProjectsBaseDataHandler(SafeHandler):
                 row.value["contact"] = (
                     ord_det["owner"]["name"] + ": " + ord_det["owner"]["email"]
                 )
+                field_sources["contact"] = "LIMS (researcher.email) and Order Portal, formatted by Genomics Status (backend)"
             elif "fields" in ord_det:
                 if row.value["contact"] == ord_det["fields"]["project_lab_email"]:
                     row.value["contact"] = (
@@ -162,12 +169,14 @@ class ProjectsBaseDataHandler(SafeHandler):
                         + ": "
                         + ord_det["fields"]["project_lab_email"]
                     )
+                    field_sources["contact"] = "LIMS (researcher.email) and Order Portal, formatted by Genomics Status (backend)"
                 elif row.value["contact"] == ord_det["fields"]["project_pi_email"]:
                     row.value["contact"] = (
                         ord_det["fields"]["project_pi_name"]
                         + ": "
                         + ord_det["fields"]["project_pi_email"]
                     )
+                    field_sources["contact"] = "LIMS (researcher.email) and Order Portal, formatted by Genomics Status (backend)"
         # The status "open" is added here since this method is reused with only the statuses open/closed.
         if (
             row.key[0] in ["review", "ongoing", "reception control", "open"]
@@ -178,6 +187,7 @@ class ProjectsBaseDataHandler(SafeHandler):
             queued = row.value["queued"]
             diff = now - dateutil.parser.parse(queued)
             row.value["days_in_production"] = diff.days
+            field_sources["days_in_production"] = "Number of days from queue date until close/aborted date, or until today. Calculated by Genomics Status (backend)"
         elif row.key[0] in ["aborted", "closed"] and "queued" in row.value:
             # Days project was in production
             if "close_date" in row.value:
@@ -186,6 +196,7 @@ class ProjectsBaseDataHandler(SafeHandler):
                 close = dateutil.parser.parse(row.value["aborted"])
             diff = close - dateutil.parser.parse(row.value["queued"])
             row.value["days_in_production"] = diff.days
+            field_sources["days_in_production"] = "Number of days from queue date until close/aborted date, or until today. Calculated by Genomics Status (backend)"
         if (
             row.key[0] in ["review", "ongoing", "reception control"]
             and "open_date" in row.value
@@ -200,6 +211,7 @@ class ProjectsBaseDataHandler(SafeHandler):
                 ] = '<b class="text-error">{}</b>'.format(diff)
             else:
                 row.value["days_in_reception_control"] = diff
+            field_sources["days_in_reception_control"] = "Number of days between open date and queue date. If not queued yet, days between open date and today. Calculated by Genomics Status (backend)"
 
         if ord_det and "fields" in ord_det:
             if "project_pi_name" in ord_det["fields"]:
@@ -213,10 +225,12 @@ class ProjectsBaseDataHandler(SafeHandler):
                         + ": "
                         + ord_det["fields"]["project_pi_email"]
                     )
+            field_sources["project_pi_name"] = "PI Email, from Order Portal, formatted by Genomics Status (backend)"
             if "project_bx_email" in ord_det["fields"]:
                 row.value["project_bx_email"] = ord_det["fields"]["project_bx_email"]
+            field_sources["project_bx_email"] = "Email to project bioinformatics responsible, from Order Portal"
 
-        return row
+        return row, field_sources
 
     def _get_two_year_from(self, from_date):
         return (
@@ -312,10 +326,6 @@ class ProjectsBaseDataHandler(SafeHandler):
 
         summary_view = self.application.projects_db.view(
             "project/summary_status", descending=True
-        )
-
-        projects_with_agreements = self.application.agreements_db.view(
-            "project/project_id", descending=True
         )
 
         # view_calls collects http requests to statusdb for each status requested
@@ -439,7 +449,7 @@ class ProjectsBaseDataHandler(SafeHandler):
 
         final_projects = OrderedDict()
         for row in filtered_projects:
-            row = self.project_summary_data(row)
+            row, _ = self.project_summary_data(row)
             proj_id = row.key[1]
 
             final_projects[proj_id] = row.value
@@ -482,8 +492,14 @@ class ProjectsBaseDataHandler(SafeHandler):
                         final_projects[proj_id].get(end_date),
                     )
 
-            if len(projects_with_agreements[proj_id]) > 0:
-                final_projects[proj_id]["has_agreements"] = True
+        # Create slices of 200 projects each to get the agreements for
+        slices = [ list(final_projects.keys())[i:i+200] for i in range(0, len(final_projects.keys()), 200) ]
+        for slice in slices:
+            projects_with_agreements = self.application.agreements_db.view(
+                "project/project_id", descending=True, keys=slice
+            )
+            for row in projects_with_agreements:
+                final_projects[row.key]["has_agreements"] = True
 
         # Get Latest running note
         notes = self.application.running_notes_db.view(
@@ -602,34 +618,52 @@ class ProjectDataHandler(ProjectsBaseDataHandler):
 
     def get(self, project):
         self.set_header("Content-type", "application/json")
-        self.write(json.dumps(self.project_info(project)))
+        view_with_sources = self.get_argument("view_with_sources", False)
+        self.write(json.dumps(self.project_info(project, view_with_sources=view_with_sources)))
 
-    def project_info(self, project):
-        view = self.application.projects_db.view("project/summary")["open", project]
+    def project_info(self, project, view_with_sources=False):
+        if view_with_sources:
+            view_adress = "project/summary_with_sources"
+        else:
+            view_adress = "project/summary"
+        view = self.application.projects_db.view(view_adress)["open", project]
         if not view.rows:
-            view = self.application.projects_db.view("project/summary")[
+            view = self.application.projects_db.view(view_adress)[
                 "closed", project
             ]
         if not len(view.rows) == 1:
             return {}
 
         summary_row = view.rows[0]
-        summary_row = self.project_summary_data(summary_row)
+        summary_row, field_sources = self.project_summary_data(summary_row)
 
         date_view = self.application.projects_db.view(
             "project/summary_dates", descending=True, group_level=1
         )
         date_result = date_view[[project + "ZZZZ"] : [project]]
 
-        summary_row.value["_doc_id"] = summary_row.id
-
         if date_result.rows:
             for date_row in date_result.rows:
                 for date_type, date in date_row.value.items():
                     summary_row.value[date_type] = date
+                    field_sources[date_type] = f"StatusDB view project/summary_dates"
+
+        summary_row.value["_doc_id"] = summary_row.id
+        field_sources["_doc_id"] = "StatusDB, inserted by Genomics Status (backend)"
         summary_row.value["sourcedb_url"] = (
             "https://" + self.settings["couch_server"].split("@")[1]
         )
+        field_sources["sourcedb_url"] = "Genomics Status (backend)"
+
+        summary_row.value['field_sources'] = field_sources
+
+        reports = {}
+        type_to_name = {'_': 'MultiQC', '_qc_': 'QC MultiQC', '_pipeline_': 'Pipeline MultiQC'}
+        for report_type in self.get_multiqc(project, read_file=False).keys():
+            report_name = type_to_name.get(report_type, report_type)
+            reports[report_name] = f"/multiqc_report/{project}?type={report_type}"
+        summary_row.value['reports'] = reports
+
         return summary_row.value
 
 
@@ -872,14 +906,14 @@ class ImagesDownloadHandler(SafeHandler):
         self.finish()
 
 
-class ProjectSamplesHandler(SafeHandler):
+class ProjectSamplesOldHandler(SafeHandler):
     """Serves a page which lists the samples of a given project, with some
     brief information for each sample.
     URL: /project/([^/]*)
     """
 
     def get(self, project):
-        t = self.application.loader.load("project_samples.html")
+        t = self.application.loader.load("project_samples_old.html")
         worksets_view = self.application.worksets_db.view(
             "project/ws_name", descending=True
         )
@@ -900,6 +934,22 @@ class ProjectSamplesHandler(SafeHandler):
             )
         )
 
+class ProjectSamplesHandler(SafeHandler):
+    """Serves a page which lists the samples of a given project, with some
+    brief information for each sample.
+    URL: /project_new/([^/]*)
+    """
+
+    def get(self, project_id):
+        t = self.application.loader.load("project_samples.html")
+        self.write(
+            t.generate(
+                gs_globals=self.application.gs_globals,
+                project_id=project_id,
+                user=self.get_current_user(),
+                lims_uri=BASEURI,
+            )
+        )
 
 class ProjectsHandler(SafeHandler):
     """Serves a page with project presets listed, along with some brief info.

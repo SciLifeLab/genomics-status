@@ -574,6 +574,23 @@ pre {
 
 .dl-horizontal > dd{
   margin-left: 180px;
+  text-align: left;
+  margin-bottom: 0px;
+}
+
+.dl-horizontal .dt-dd-pair {
+  clear: both;
+}
+
+.dl-horizontal > .dt-dd-pair > dt{
+  float: left;
+  text-align: right;
+  width: 170px;
+}
+
+.dl-horizontal > .dt-dd-pair > dd{
+  margin-left: 180px;
+  text-align: left;
   margin-bottom: 0px;
 }
 

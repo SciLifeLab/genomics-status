@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+<!--
+Template file: projects_status.html
+URL: /project_cards
+Title: Project cards
+-->
+
+
+{% block stuff %}
+
+<div id="v_projects_main">
+    <v-projects-cards :user="{email: '{{user.email}}', user: '{{user.name}}'}"/>
+</div>
+{% end %}
+
+{% block js %}
+
+<script src="/static/js/vue.v3.2.47.global.prod.js"></script>
+<script src="/static/js/axios.v1.3.4.min.js"></script>
+<script src="/static/js/external/textarea-caret.3.1.0.js"></script>
+<script type="module" src="/static/js/projects_main_vue.js"></script>
+
+{% end %}
