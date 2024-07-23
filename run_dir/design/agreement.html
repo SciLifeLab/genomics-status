@@ -123,11 +123,9 @@
       <div {%if data.get('type', '')=='preview' %} class="first_page_preview" {% end %}></div>
     {% end %}
     </div>
-    {%if data['origin']=='Agreement' %}
     <div class="appendices">
       {% raw template_text['appendices'] %}
     </div>
-    {% end %}
     <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
   </body>
 </html>
