@@ -475,10 +475,11 @@ class Application(tornado.web.Application):
             subdomain=urlsplit(self.zendesk_url).hostname.split(".")[0],
         )
 
-        # Trello
-        self.trello_api_key = settings["trello"]["api_key"]
-        self.trello_api_secret = settings["trello"]["api_secret"]
-        self.trello_token = settings["trello"]["token"]
+        # Jira
+        self.jira_url = settings["jira"]["url"]
+        self.jira_user = settings["jira"]["user"]
+        self.jira_api_token = settings["jira"]["api_token"]
+        self.jira_project_key = settings["jira"]["project_key"] 
 
         # Slack
         self.slack_token = settings["slack"]["token"]

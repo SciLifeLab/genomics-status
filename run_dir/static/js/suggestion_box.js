@@ -14,6 +14,10 @@ function fill_suggestions_table() {
       // Get the information from the API call
       var card_name = card_info[0];
       var card_link = '<a class="text-decoration-none" target="_blank" href="' + card_info[1] + '">';
+      let board = "Jira"
+      if (card_link.includes("trello")) {
+        board = 'Trello';
+      }
       var archived = card_info[2];
       var card_date = date.split('T')[0] + ' at ' + date.split('T')[1].split('.')[0];
 
@@ -29,13 +33,13 @@ function fill_suggestions_table() {
       // Push the row HTML to the applicable arrays
       if(archived) {
           archivedCards.push('<tr class="table-success">'+
-                        '<td>'+card_link+'<s>'+card_name+'</s></a></td>'+
+                        '<td>'+card_link+'<s>['+board+']'+card_name+'</s></a></td>'+
                         '<td>'+card_link+'<s>'+card_date+'</s></a></td>'+
                      '</tr>');
       }
       else {
           activeCards.push('<tr>'+
-                          '<td>'+card_link+card_name+'</a></td>'+
+                          '<td>'+card_link+'['+board+']'+card_name+'</a></td>'+
                           '<td>'+card_link+card_date+'</a></td>'+
                        '</tr>');
       }

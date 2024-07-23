@@ -8,8 +8,9 @@ import couchdb
 import logging
 import sys
 import yaml
+from requests.exceptions import HTTPError
 
-import trello
+from atlassian import Jira
 
 
 def main(config):
@@ -27,53 +28,34 @@ def main(config):
     )
     log = logging.getLogger(__name__)
 
-    # Connect to Trello
-    api_key = config.get("trello").get("api_key")
-    api_secret = config.get("trello").get("api_secret")
-    token = config.get("trello").get("token")
-    t_client = trello.TrelloClient(api_key=api_key, api_secret=api_secret, token=token)
+    # Connect to Jira
+    jira_url = config.get("jira").get("url")
+    jira_user= config.get("jira").get("user")
+    jira_api_token = config.get("jira").get("api_token")    
+    jira = Jira(url=jira_url, username=jira_user, password=jira_api_token)
 
     # Connect to StatusDB
     s = couchdb.Server(config.get("couch_server"))
 
     # Get list of stored suggestions
     sb_database = s["suggestion_box"]
-    cards_in_db = {row.key: row.value for row in sb_database.view("card/id").rows}
-
-    # Get list of cards in Suggestion Box board
-    for b in t_client.list_boards():
-        if b.name == "Suggestion Box":
-            sb_board = b
-    all_cards = sb_board.all_cards()
+    unarchived_cards ={row.key: row.value for row in sb_database.view("card/unarchived_jira_cards").rows}
 
     docs = []
-    for card in all_cards:
-        # There are some archived cards from the testing phase that are not on
-        # the database but are still in Trello. They cannot be removed.
-        if card.id in cards_in_db.keys():
-            log.info("Updating status of card {}...".format(card.name))
-            doc = sb_database.get(cards_in_db[card.id])
-            doc["archived"] = card.closed
-            docs.append(doc)
-    # Checking if someone has been naughty and moved cards from the suggestion box
-    for dbcard_id in cards_in_db.keys():
-        if dbcard_id in [i.id for i in all_cards]:
-            continue
+    for doc_id, card_id in unarchived_cards.items():
         try:
-            tcard = t_client.get_card(dbcard_id)
-            closed = tcard.closed
-        except:
-            # Trello-py might not give any exceptions if the card is not found
+            jira_card = jira.issue(card_id)
+            closed = jira_card["fields"]["status"]["statusCategory"]["name"] == "Done"
+            if closed:
+                doc = sb_database.get(doc_id)
+                doc["archived"] = closed
+                log.info(f"Card with key {jira_card["key"]} and card_id {card_id} was archived")
+                docs.append(doc)
+        except HTTPError:
             log.warning(
-                "Card {} in DB was not found Trello, it was likely deleted".format(
-                    dbcard_id
-                )
+                f"Card with cardid {card_id} in DB was not found on Jira, it was likely deleted"
             )
             continue
-        log.info("Updating status of non-suggestion box card {}...".format(tcard.name))
-        doc = sb_database.get(cards_in_db[tcard.id])
-        doc["archived"] = closed
-        docs.append(doc)
 
     sb_database.update(docs)
 

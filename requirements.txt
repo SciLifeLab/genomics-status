@@ -11,7 +11,7 @@ nest_asyncio
 numpy>=1.12.1
 oauth2>=1.9.0.post1
 openpyxl
-py-trello
+atlassian-python-api
 pycryptodome>=3.6.1
 pyparsing>=2.2.0
 python-dateutil>=2.7.5
