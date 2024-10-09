@@ -34,7 +34,7 @@ from status.authorization import LoginHandler, LogoutHandler, UnAuthorizedHandle
 from status.bioinfo_analysis import BioinfoAnalysisHandler
 from status.data_deliveries_plot import DataDeliveryHandler, DeliveryPlotHandler
 from status.deliveries import DeliveriesPageHandler
-from status.flowcell import FlowcellHandler, ElementFlowcellHandler, ONTFlowcellHandler, ONTReportHandler
+from status.flowcell import FlowcellHandler, ElementFlowcellHandler, ElementFlowcellDataHandler, ONTFlowcellHandler, ONTReportHandler
 from status.flowcells import (
     FlowcellDemultiplexHandler,
     FlowcellLinksDataHandler,
@@ -237,6 +237,7 @@ class Application(tornado.web.Application):
             ),
             ("/api/v1/draft_cost_calculator", PricingDraftDataHandler),
             ("/api/v1/draft_sample_requirements", SampleRequirementsDraftDataHandler),
+            ("/api/v1/element_flowcell/([^/]*$)", ElementFlowcellDataHandler),
             ("/api/v1/flowcells", FlowcellsDataHandler),
             ("/api/v1/flowcell_info2/([^/]*)$", FlowcellsInfoDataHandler),
             ("/api/v1/flowcell_info/([^/]*)$", OldFlowcellsInfoDataHandler),

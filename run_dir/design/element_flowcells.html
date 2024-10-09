@@ -8,8 +8,8 @@
 
         <thead style="vertical-align: top">
             <tr class="sticky darkth">
+                <th class="sort" data-sort="ngi_run_id">NGI Run ID</th>
                 <th class="sort" data-sort="start_date">Start date</th>
-                <th class="sort" data-sort="run_name">Run name</th>
                 <th class="sort" data-sort="run_type">Run type</th>
                 <th class="sort" data-sort="side">Side</th>
                 <th class="sort" data-sort="cycles">Cycles</th>
@@ -21,8 +21,8 @@
         </thead>
         <tfoot>
             <tr class="darkth">
+                <th class="sort searchable" data-sort="ngi_run_id">NGI Run ID</th>
                 <th class="sort searchable" data-sort="start_date">Start date</th>
-                <th class="sort searchable" data-sort="run_name">Run name</th>
                 <th class="sort searchable" data-sort="run_type">Run type</th>
                 <th class="sort searchable" data-sort="side">Side</th>
                 <th class="sort searchable" data-sort="cycles">Cycles</th>
@@ -35,9 +35,8 @@
         <tbody class="list">
             {% for onefc in element_fcs %}
                 <tr>
-                    <td class="start_date">{{ onefc.key[:10] }}</td>
-                    <td class = run_name>
-                        <a class="text-decoration-none" href="/flowcells_element/{{ onefc.id }}">{{ onefc.value['RunName'] }}</a>
+                    <td class="ngi_run_id">
+                        <a class="text-decoration-none" href="/flowcells_element/{{ onefc.key }}">{{ onefc.key }}</a>
                         {% if onefc.value.get('Outcome') == 'OutcomeCompleted' %}
                             <abbr title="Run completed"><span class="fa fa-check-circle"></span></abbr>
                         {% elif onefc.value.get('Outcome') == 'ongoing' %}
@@ -48,26 +47,27 @@
                            <abbr title="Run failed"><span class="fa fa-file-dashed-line"></span></abbr>
                         {% end %}
                     </td>
+                    <td class="start_date">{{ onefc.key[:8] }}</td>
                     <td class="run_type">
-                        {{ onefc.value["RunType"] }}
+                        {{ onefc.value.get("RunType") }}
                     </td>
                     <td class="side">
-                        {{ onefc.value["Side"] }}
+                        {{ onefc.value.get("Side") }}
                     </td>
                     <td class="cycles">
-                        {{ onefc.value["Cycles"] }}
+                        {{ onefc.value.get("Cycles") }}
                     </td>
                     <td class="throughput_selection">
-                        {{ onefc.value["ThroughputSelection"] }}
+                        {{ onefc.value.get("ThroughputSelection") }}
                     </td>
                     <td class="kit_configuration">
-                        {{ onefc.value["KitConfiguration"] }}
+                        {{ onefc.value.get("KitConfiguration") }}
                     </td>
                     <td class="chemistry_version">
-                        {{ onefc.value["ChemistryVersion"] }}
+                        {{ onefc.value.get("ChemistryVersion") }}
                     </td>
                     <td class="outcome text-center">
-                        {{ onefc.value["Outcome"] }}
+                        {{ onefc.value.get("Outcome") }}
                     </td>
                 </tr>
             {% end %}

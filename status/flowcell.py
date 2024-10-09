@@ -462,13 +462,14 @@ class ElementFlowcellHandler(SafeHandler):
             t.generate(
                 gs_globals=self.application.gs_globals,
                 user=self.get_current_user(),
+                ngi_run_id=name,
             )
         )
 
 class ElementFlowcellDataHandler(SafeHandler):
     def get(self, name):
-        flowcell = self.application.element_runs_db.get(name)
-        self.write(flowcell)
+        rows = self.application.element_runs_db.view('info/id', include_docs=True)[name].rows
+        self.write(rows[0].doc)
 
 class ONTFlowcellHandler(SafeHandler):
     """Serves a page which shows information for a given ONT flowcell."""

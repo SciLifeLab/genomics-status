@@ -1,8 +1,16 @@
 {% extends 'base.html' %}
 {% block stuff %}
-<div id="page_content">
-    <h1>Element BioSciences (AVITI) run <span id="page_title"></span></h1>
-    <div>Under construction. This page should contain information about a single element biosciences run.</div>
+<div id="element_vue_app">
+    <v-element-flowcell ngi_run_id="{{ngi_run_id}}"/>
 </div>
+{% end %}
+
+{% block js %}
+
+<script src="/static/js/vue.v3.2.47.global.prod.js"></script>
+<script src="/static/js/axios.v1.3.4.min.js"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="/static/js/element_flowcell.js?v={{ gs_globals['git_commit'] }}"></script>
 
 {% end %}
+
