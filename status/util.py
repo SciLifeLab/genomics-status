@@ -1,8 +1,10 @@
 import tornado.web
+import tornado.websocket
 import json
 import requests
 import os
 import sys
+import urllib
 from datetime import datetime, timedelta
 from dateutil import parser
 
@@ -159,10 +161,11 @@ class BaseHandler(tornado.web.RequestHandler):
                 )
             )
 
-    def get_multiqc(self, project_id):
+    def get_multiqc(self, project_id, read_file=True):
         """
         Getting multiqc reports for requested project from the filesystem
         Returns a string containing html if report exists, otherwise None
+        If read_file is false, the value of the dictionary will be the path to the file
         """
         view = self.application.projects_db.view("project/id_name_dates")
         rows = view[project_id].rows
@@ -179,9 +182,12 @@ class BaseHandler(tornado.web.RequestHandler):
                 multiqc_name = "{}{}multiqc_report.html".format(project_name, type)
                 multiqc_file_path = os.path.join(multiqc_path, multiqc_name)
                 if os.path.exists(multiqc_file_path):
-                    with open(multiqc_file_path, "r", encoding="utf-8") as multiqc_file:
-                        html = multiqc_file.read()
-                        multiqc_reports[type] = html
+                    if read_file:
+                        with open(multiqc_file_path, "r", encoding="utf-8") as multiqc_file:
+                            html = multiqc_file.read()
+                            multiqc_reports[type] = html
+                    else:
+                        multiqc_reports[type] = multiqc_file_path
         return multiqc_reports
 
     @staticmethod
@@ -219,6 +225,21 @@ class SafeHandler(BaseHandler):
 
 class UnsafeHandler(BaseHandler):
     pass
+
+
+class SafeSocketHandler(tornado.websocket.WebSocketHandler, SafeHandler):
+    @tornado.web.authenticated
+    def prepare(self):
+        return super(tornado.websocket.WebSocketHandler, self).prepare()
+
+    def get_current_user(self):
+        return super(SafeHandler, self).get_current_user()
+
+    def check_origin(self, origin):
+        parsed_origin = urllib.parse.urlparse(origin)
+        if self.application.test_mode:
+            return True
+        return parsed_origin.netloc.endswith(".scilifelab.se")
 
 
 class MainHandler(UnsafeHandler):

@@ -18,7 +18,7 @@ from status.util import SafeHandler
 
 
 class RunningNotesDataHandler(SafeHandler):
-    """Serves all running notes from a given project.
+    """Serves all running notes from a given project, flowcell or other.
     URL: /api/v1/running_notes/([^/]*)
     """
 
@@ -382,6 +382,27 @@ class LatestStickyNoteHandler(SafeHandler):
             latest_sticky_note = latest_sticky_doc[0].value
             self.write({latest_sticky_note["created_at_utc"]: latest_sticky_note})
 
+class LatestStickyNotesMultipleHandler(SafeHandler):
+    """Serves the latest sticky running note for multiple projects.
+
+    URL: /api/v1/latest_sticky_run_note)
+    """
+    def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        if 'project_ids' not in data:
+            self.set_status(400)
+            return self.write("Error: no project_ids supplied")
+
+
+        project_ids = data['project_ids']
+        latest_sticky_notes = self.application.running_notes_db.view(
+            "latest_sticky_note_previews/project", keys=project_ids, reduce=True, group=True
+        ).rows
+        latest_sticky_notes = {
+            row.key: row.value for row in latest_sticky_notes if row.value
+        }
+        self.set_header("Content-type", "application/json")
+        self.write(latest_sticky_notes)
 
 class LatestRunningNoteHandler(SafeHandler):
     """Handler for methods related to running notes which are used in other classes"""

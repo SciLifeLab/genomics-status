@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+
+<!--
+Template file: project_samples.html
+URL: /project/[project id]
+Title: Production Samples
+Description: Details page for a single project
+-->
+
+{% block stuff %}
+
+<div id="loading_spinner" style="text-align:center; margin:100px 0;"><span class="fa fa-sync fa-spin"></span>  Loading project page..</div>
+<div id="page_content" style="display:none;" class="mb-3">
+
+<h1>
+  <span id="project_name">-</span>
+  <small><span class="badge" id="project_status_alert"></span></small>
+  <a href="#" class="btn btn-outline-dark btn-xs float-right" id="show_order_timeline" style="margin-top:20px;"><span id="show_orderdates_btn" style="display:none;">Show</span> <span id="hide_orderdates_btn">Hide</span> order dates on timeline</a>
+</h1>
+
+<h3 class="mt-3">
+  <a href="/project_new/{{project}}" class="text-decoration-none" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+    <i class="fa-regular fa-arrow-up-right-from-square"></i> New Project Page
+  </a>
+</h3>
+<div class="project_timescale" id="project_timescale_production" style="visibility:hidden;"></div>
+<div class="project_timescale my-4" id="project_timescale_orderdates"></div>
+
+<div class="review_alert alert alert-danger" id="review_alert" style="display:none;" >This project requires a review by a manager: <span id="review_ids"></span></div>
+
+<div class="row">
+  <div class="col-md-4 borderRight">
+    <h4>Key Project Information</h4>
+    <dl class="dl-horizontal">
+      <dt>Type</dt>									    <dd id="type">-</dd>
+      <dt>Application</dt>					    <dd id="application">-</dd>
+      <dt>Sequencing Platform</dt>	    <dd><span id="sequencing_platform">-</span></dd>
+      <dt>Sequencing Setup</dt>			    <dd><span id="sequencing_setup">-</span></dd>
+      <dt>Flowcell</dt>			            <dd><span id="flowcell">-</span></dd>
+      <dt>Flowcell Option</dt>			    <dd><span id="flowcell_option">-</span></dd>
+      <dt>Library Method</dt>				    <dd id="library_construction_method">-</dd>
+      <dt>Library Prep Option</dt>	    <dd id="library_prep_option">-</dd>
+      <dt>BioAnalyzer Run Required</dt>	<dd id="bioanalyzer_run_required">-</dd>
+      <dt>Last updated:</dt>            <dd><span id="last_update"></dd>
+		</dl>
+    <hr>
+
+    <h4>Order Dates</h4>
+    <dl class="dl-horizontal">
+      <dt>Order Received</dt>				<dd><span class="rawdate" id="order_received">-</span></dd>
+      <dt>Contract Sent</dt>				<dd><span class="rawdate" id="contract_sent">-</span></dd>
+      <dt>Plates Sent</dt>					<dd><span class="rawdate" id="plates_sent">-</span></dd>
+      <dt>Contract Received</dt>		<dd><span class="rawdate" id="contract_received">-</span></dd>
+      <dt>Signed Contract Printed</dt>		<dd><span class="rawdate" id="signed_contract_printed">-</span></dd>
+      <dt>Sample Info Received</dt>	<dd><span class="rawdate" id="sample_information_received">-</span></dd>
+      <dt>Samples Received</dt>			<dd><span class="rawdate" id="samples_received">-</span></dd>
+		</dl>
+
+  </div>
+
+  <!-- Project timeline -->
+  <div class="col-md-4 borderRight">
+    <h4>Project Timeline</h4>
+    <dl class="dl-horizontal">
+      <dt><abbr data-toggle="tooltip" data-html="true" title="From <em>Open date</em><br>until close / today">Days in Production</abbr></dt>
+      <dd id="days_in_production">-</dd>
+
+      <dt>Open date</dt>
+      <dd>
+        <span class="rawdate" id="open_date">-</span>
+        <span class="badge bg-danger" id="old_project_warning" data-toggle="tooltip" style="display:none;">Warning - Old Project!</span>
+      </dd>
+
+      <dt><abbr data-toggle="tooltip" data-html="true" title="First Initial Quality Control">QC</abbr> Start Date</dt>
+			<dd><span class="rawdate" id="first_initial_qc_start_date">-</span></dd>
+
+      <dt>Queue Date</dt>
+      <dd><span class="rawdate" id="queued">-</span>&nbsp; <span id="signature_queued" class="upperCase badge bg-secondary"></span></dd>
+
+      <dt>Library Prep Start</dt>					<dd><span class="rawdate" id="library_prep_start">-</span></dd>
+      <dt>QC Library Finished</dt>				<dd><span class="rawdate" id="qc_library_finished">-</span></dd>
+      <dt>Sequencing Start</dt>						<dd><span class="rawdate" id="sequencing_start_date">-</span></dd>
+
+      <dt>All Samples Sequenced</dt>
+      <dd><span class="rawdate" id="all_samples_sequenced">-</span>&nbsp; <span id="signature_all_samples_sequenced" class="upperCase label badge bg-secondary"></span></dd>
+
+      <dt>All Raw Data Delivered</dt>
+	    <dd><span class="rawdate"  id="all_raw_data_delivered">-</span>&nbsp; <span id="signature_all_raw_data_delivered" class="badge bg-secondary"></span></dd>
+
+      <dt class="bp-dates"><abbr data-toggle="tooltip" data-html="true" title="Best Practice">BP</abbr> Analysis Completed</dt>
+	    <dd class="bp-dates"><span class="rawdate" id="best_practice_analysis_completed">-</span>&nbsp; <span id="signature_best_practice_analysis_completed" class="upperCase badge bg-secondary"></span></dd>
+
+      <dt>Close Date</dt>
+      <dd><span class="rawdate" id="close_date">-</span></dd>
+
+      <dt class="aborted-dates">Aborted</dt>
+      <dd><span class="aborted-dates rawdate" id="aborted">-</span></dd>
+
+      <dt>All Samples Destroyed</dt>
+      <dd><span id="all_samples_destroyed">-</span></dd>
+    </dl>
+  </div>
+
+
+  <!-- Project comment -->
+  <div class="col-md-4">
+    <h4>Project Coordinator Comment</h4>
+    <p id="project_comment">-</p><hr>
+
+    <h4>Latest Sticky Note</h4>
+    <div id="latest_sticky_note">-</div>
+    <hr>
+
+    <h4>User project description
+      <small class="text-danger">Use with caution! <i class="fa fa-info-circle" data-toggle="tooltip" data-html="true" data-placement="left" title="This is the original user description of the project and may not reflect the final order."></i></small>
+    </h4>
+    <div id="customer_project_description_wrapper" class="showfade">
+      <p id="customer_project_description"></p>
+      <p class="fade-read-more"><a href="#" class="btn btn-light text-dark" style="display:none;">Read More</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabbable">
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link active" href="#tab_details_content" role="tab" data-toggle="tab">Project information</a></li>
+    <li class="nav-item"><a class="nav-link" href="#tab_samples_content" role="tab" data-toggle="tab">Samples</a></li>
+    <li class="nav-item"><a class="nav-link" href="#tab_running_notes_content" role="tab" data-toggle="tab">Running Notes</a></li>
+    <li class="nav-item"><a class="nav-link" href="#tab_com_content" role="tab" data-toggle="tab" id="tab_communication">User communication</a></li>
+    <li class="nav-item"><a class="nav-link" href="#tab_links_content" role="tab" data-toggle="tab">Links</a></li>
+    {% if not multiqc %}
+    <li class="nav-item" data-toggle="tooltip" data-html="true" data-placement="bottom" title="No MultiQC report available" ><a class="nav-link disabled">Open MultiQC reports</a></li>
+    {% else %}
+     <li class="nav-item dropdown">
+       <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Open MultiQC reports</a>
+       <div class="dropdown-menu">
+         {% for key in multiqc %}
+          {% if 'qc' in key %}
+            {% set rep_name = ' QC' %}
+          {% else %}
+            {% set rep_name = ' '+key.strip('_').capitalize() %}
+          {% end %}
+         <a class="dropdown-item" href="/multiqc_report/{{ project }}?type={{ key }}" target="_blank">Open{{ rep_name }} MultiQC report</a>
+         {% end %}
+       </div>
+     </li>
+    {% end %}
+    <li class="nav-item"><a class="nav-link" href="/bioinfo/{{ project }}" target="_blank">Open bioinfo tab</a></li>
+    <li class="nav-item"><a class="nav-link" href="#tab_agreements_content" role="tab" data-toggle="tab" id="tab_agreements">Agreements</a></li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="tab_details_content">
+      <div class="row">
+        <div class="col-sm-4">
+          <!--Order Info Table-->
+          <table class="table table-bordered table-striped">
+            <thead>
+	              <tr class="darkth"><th colspan="2">Order info &amp; Contacts <a id="psul_link_button" data-toggle="tooltip" class="btn btn-light btn-xs float-right copy_proj" target="_blank" title="Copies the project ID and opens LIMS dashboard" href="{{ lims_dashboard_url }}">PSUL</a></th>
+	              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bioinfo. Responsible</td><td id="bioinfo_responsible"></td></tr>
+              <tr><td>BP Responsible</td><td id="bp_responsible"></td></tr>
+              <tr><td>Project Coordinator</td><td id="project_coordinator"></td></tr>
+              <tr><td>E-mails</td><td id="contact"></td></tr>
+              <tr><td>Invoice Reference</td><td><code id="invoice_reference"></code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!--Bioinformatics Info Table-->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr class="darkth"><th colspan="2">Bioinformatics <a id="statusdb_link" data-toggle="tooltip" title="Opens project page in StatusDB" class="btn btn-light btn-xs float-right" target="_blank">StatusDB</a>
+              </th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Delivery Type</td><td><code id="delivery_type"></code></td></tr>
+              <tr><td>Best Practice Bioinformatics</td><td id="best_practice_bioinformatics"></td></tr>
+              <tr><td>Bioinfo Analysis</td><td id="bioinformatic_qc"></td></tr>
+              <tr><td>Organism</td><td id="organism"></td></tr>
+              <tr><td>Reference Genome</td><td id="reference_genome"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Wet Lab table -->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr class="darkth"><th colspan="2">Wet Lab <a id="barcode_link_button" data-toggle="tooltip" class="btn btn-light btn-xs float-right copy_proj" target="_blank" title="Copies the project ID and opens the barcode page" href="/barcode">Barcode Page</a></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Sample type</td><td id="sample_type"></td></tr>
+              <tr><td>Library type</td><td id="library_type_(ready-made_libraries)"></td></tr>
+              <tr><td>Number of samples ordered</td><td id="sample_units_ordered"></td></tr>
+              <tr><td>% phiX</td><td id="phix_spike-in_(percent)"></td></tr>
+              <tr><td>Low Diversity</td><td id="low_diversity"></td></tr>
+              <tr><td>Custom Primer</td><td id="custom_primer"></td></tr>
+              <tr><td>Lanes Ordered</td><td><span class="badge bg-secondary" id="sequence_units_ordered_(lanes)"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Samples table -->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr class="darkth"><th colspan="2">Samples</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Non-aborted samples</td><td><span class="badge bg-secondary" id="final_number_of_samples"></span></td></tr>
+              <tr><td>Samples provided</td><td><span class="badge bg-secondary" id="no_samples"></span></td></tr>
+              <tr><td>Pools</td><td><span class="badge bg-secondary" id='number_of_pools'></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Sample status table -->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr class="darkth"><th colspan="2">Sample Status
+                <div class="dropdown d-inline-block float-right" id="project_summary_link_dropdown">
+                  <button class="btn btn-xs btn-light dropdown-toggle " type="button" data-toggle="dropdown" aria-expanded="false" id="proj_sum_button">
+                    Project Summary
+                  </button>
+                  <ul class="dropdown-menu" aria-labelledby="proj_sum_button">
+                  </ul>
+                </div>
+              </th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Finished</td><td><span class="badge bg-success" id='finished_samples'></span></td></tr>
+              <tr><td>In progress</td><td><span class="badge bg-secondary" id='in_progress_samples'></span></td></tr>
+              <tr><td>Aborted</td><td><span class="badge bg-danger" id='aborted_samples'></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Progress summary table -->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <!--<tr><th colspan="2"><a href="/project_summary/{{ project }}">Progress summary</a></th></tr>-->
+              <tr class="darkth"><th colspan="2">Progress summary</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Passed Initial QC</td><td id='passed_initial_qc'></td></tr>
+              <tr><td>Passed Library QC</td><td id='passed_library_qc'></td></tr>
+              <tr><td>Lanes Started</td><td><span class="badge bg-secondary" id="lanes_sequenced"></span></td></tr>
+              <tr><td>Library re-preps (Genstat)</td><td><span class="badge bg-secondary" id='library_repreps'></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="row">
+        <!-- Charon Status table -->
+        <div class="col-sm-4">
+          <table class="table table-bordered table-striped" id="charon-status" style="display:none;">
+            <thead>
+              <tr class="darkth"><th>Charon Status</th><th><a href="https://charon.scilifelab.se/project/{{ project }}" id="charon_link_button" class="btn btn-light btn-xs float-right">Charon</a></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                  <td>Total amount of samples</td>
+                  <td><span class="badge bg-secondary" id="charon-status-tot"></span></td>
+              </tr>
+              <tr>
+                  <td>Aborted samples</td>
+                  <td><span class="badge bg-warning" id="charon-status-ab"></span></td>
+              </tr>
+              <tr>
+                  <td>Sequenced samples</td>
+                  <td><span class="badge bg-secondary" id="charon-status-seq"></span></td>
+              </tr>
+              <tr>
+                  <td>Analyzed samples</td>
+                  <td><span class="badge bg-secondary" id="charon-status-ana"></span></td>
+              </tr>
+              <tr>
+                  <td>Successful Analysis (non-aborted)</td>
+                  <td><span class="badge bg-success" id="charon-status-passed"></span></td>
+              </tr>
+              <tr>
+                  <td>Failed Analysis</td>
+                  <td><span class="badge bg-danger" id="charon-status-failed"></span></td>
+              </tr>
+              <tr>
+                  <td>Running Analysis</td>
+                  <td><span class="badge bg-info" id="charon-status-runn"></span></td>
+              </tr>
+              <tr>
+                  <td>30X Human Genomes Equivalents</td>
+                  <td><span class="badge bg-secondary" id="charon-status-hge"></span></td>
+              </tr>
+              <tr>
+                  <td>Delivery Project(s)</td>
+                  <td><span id="charon-status-gdp"></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAMPLES TAB -->
+    <div class="tab-pane fade" id="tab_samples_content">
+      <form class="row row-cols-lg-auto g-3" role="form" id="Search-form" >
+        <div class="form-group col-12 p-2">
+          <label class="col-form-label" for="search_field">Search Samples:</label>
+        </div>
+        <div class="form-group col-12 p-2">
+          <div id="search_field"></div>
+        </div>
+        <div class="btn-toolbar p-2" role="toolbar">
+          <label class="col-form-label p-1">Column Presets:</label>
+          <div class="btn-group btn-group-sm" id="default_preset_buttons">
+            <!-- Load default presets (to be filled with JS) -->
+          </div>
+
+          <div class="btn-group ml-4" role="group">
+          <a class="btn btn-sm btn-outline-secondary d-flex align-items-center" href='/reads_total/{{ project }}' role="button">Reads Aggregation</a>
+          </div>
+          <div class="btn-group ml-1" role="group">
+          <a class="btn btn-sm btn-outline-secondary d-flex align-items-center" href='/rec_ctrl_view/{{ project }}' role="button">RecCtrl Plates</a>
+          </div>
+          <div class="btn-group ml-1" role="group">
+            <button class="btn btn-sm btn-outline-secondary" data-toggle="modal" type="button" data-target="#imagesModal">
+           Download Images
+            </button>
+          </div>
+          </div>
+
+          <div class="col-12 p-2 d-inline-flex" >
+           <button class="float-right btn btn-sm btn-primary" data-toggle="modal" data-target="#sampleFieldsModal">Filter Columns</button>
+         </div>
+
+      </form>
+
+      {% if len(worksets) > 0 %}
+      <hr>
+      <!-- Woksets -->
+      <label for="tab_samples_worksets">Worksets:</label>
+      <div id="tab_samples_worksets">
+      {% for workset in worksets %}
+        <div class="btn-group btn-group-sm">
+          <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            {{ workset.value }} <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ lims_uri }}/clarity/search?scope=Container&query={{ workset.value }}">Open in the LIMS</a></li>
+            <li><a class="dropdown-item" href="/workset/{{ workset.value }}">Open in Genomics Status</a></li>
+          </ul>
+        </div>
+      {% end %}
+      </div>
+      {% end %}
+
+      <hr>
+        <table class="table table-bordered" id="sample_table">
+          <thead id="samples_table_head">
+          </thead>
+          <tfoot id="samples_table_foot">
+          </tfoot>
+          <tbody id="samples_table_body">
+          </tbody>
+        </table>
+    </div>
+
+    <!-- RUNNING NOTES TAB -->
+    {% include "running_notes_tab.html" %}
+
+    <!-- USER COMMUNICATION TAB -->
+    <div class="tab-pane fade" id="tab_com_content">
+      <div id="zendesk_loading_spinner" style="text-align:center; margin:100px 0;"><span class='fa fa-sync fa-spin'></span>  Loading ZenDesk tickets..</div>
+      <div id="com_accordion"></div>
+    </div>
+
+    <!-- LINK TAB -->
+    {% include "link_tab.html" %}
+
+    <!-- Agreements TAB -->
+    {% include "agreements_tab.html" %}
+  </div>
+</div> <!-- #page_content -->
+
+
+<!-- SAMPLE FIELD MODAL -->
+<div id="sampleFieldsModal" class="modal fade">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Filter Sample Table Columns</h3>
+        <button type="button" class="btn-close" data-dismiss="modal"><span class="sr-only">Close</span></button>
+      </div>
+      <div class="modal-body">
+        <form id="Filter" class="form form-search" role="form">
+          <p>Choose which columns you would like to see in the project's Samples table.
+            Click a heading to select / deselect all checkboxes in that group.</p>
+          <div class="row">
+            <div class="col-sm-3" id="basic-columns">
+              <h4 class="search-action" data-action="filterHeader">Basic <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['BASIC_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="basic-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="basic-columns-{{col_name}}">
+                <label class="form-check-label" for="basic-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+            <div class="col-sm-3" id="details-columns">
+              <h4 class="search-action" data-action="filterHeader">Sample Details <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['DETAILS_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="details-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="details-columns-{{col_name}}">
+                <label class="form-check-label" for="details-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+            <div class="col-sm-3" id="initial-qc-columns">
+              <h4 class="search-action" data-action="filterHeader">Initial QC <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['INITIAL_QC_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="initial-qc-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="initial-qc-columns-{{col_name}}">
+                <label class="form-check-label" for="initial-qc-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+            <div class="col-sm-3" id="library-prep-columns">
+              <h4 class="search-action" data-action="filterHeader">Library Prep <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['LIBRARY_PREP_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="library-prep-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="library-prep-columns-{{col_name}}">
+                <label class="form-check-label" for="library-prep-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+          </div>
+          <div class="row pt-2">
+            <div class="col-sm-3" id="library-validation-columns">
+              <h4 class="search-action" data-action="filterHeader">Library QC <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['LIBRARY_VALIDATION_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="library-validation-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="library-validation-columns-{{col_name}}">
+                <label class="form-check-label" for="library-validation-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+            <div class="col-sm-3" id="pre-prep-library-validation-columns">
+              <h4 class="search-action" data-action="filterHeader">Pre Prep Library QC <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['PRE_PREP_LIBRARY_VALIDATION_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="pre-prep-library-validation-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="pre-prep-library-validation-columns-{{col_name}}">
+                <label class="form-check-label" for="pre-prep-library-validation-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+            <div class="col-sm-3" id="tissue-columns">
+              <h4 class="search-action" data-action="filterHeader">Tissue <input class="headingCheckbox" type="checkbox"></h4>
+              {% for col_display_name, col_name in columns_sample['TISSUE_COLUMNS'].items() %}
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input filterCheckbox" data-columngroup="tissue-columns" data-displayname="{{col_display_name}}" name="{{col_name}}" id="tissue-columns-{{col_name}}">
+                <label class="form-check-label" for="tissue-columns-{{col_name}}">
+                  {{col_display_name}}
+                </label>
+              </div>
+              {% end %}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal" aria-hidden="true">Close</button>
+        <button class="btn btn-secondary search-action" data-dismiss="modal" data-action="filterReset">Reset</button>
+        <button class="btn btn-primary search-action" data-dismiss="modal" data-action="filterApply" type="submit">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RUNNING NOTES HELP -->
+{% include "running_notes_help.html" %}
+
+<!-- ImagesDownload MODAL -->
+<div id="imagesModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Download Images</h3>
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+      </div>
+      <div class="modal-body">
+        <form id="chooseImgType" class="form form-search" role="form" target="_blank">
+          <div class="row">
+            <div class="col-sm-11">
+            <p><b>Choose image type to download in bulk.</b></p>
+            </div>
+          </div>
+          <div class="project_page_border_style">
+            <div class="form-group row">
+                <div class="form-group col-sm-6">
+                  <div class="form-check">
+                    <input class="form-check-input" name="imgRadio" type="radio" id="imgCheck1" value="frag_an_initial_qc">
+                    <label class="form-check-label" for="imgCheck1">
+                      Initial QC Fragment Analyser
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" name="imgRadio" type="radio" id="imgCheck2" value="caliper_initial_qc">
+                    <label class="form-check-label" for="imgCheck2">
+                      Initial QC Caliper
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" name="imgRadio" type="radio" id="imgCheck3" value="caliper_libval">
+                    <label class="form-check-label" for="imgCheck3">
+                      Library Validation Caliper
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" name="imgRadio" type="radio" id="imgCheck4" value="frag_an_libval">
+                    <label class="form-check-label" for="imgCheck3">
+                      Library Validation Fragment Analyser
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group col-sm-6 text-center py-4">
+                    <button type="submit" class="btn btn-sm btn-primary" id="downloadImgsBtn">Download</button>
+                </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CALIPER MODAL -->
+<div id="caliperModal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Caliper Image</h3>
+        <button type="button" class="btn-close" data-dismiss="modal" aria-hidden="true"></button>
+      </div>
+      <div class="modal-body">
+        <div id="caliper_modal_image_wrapper">
+          <p>Caliper image loading...</p>
+        </div>
+        <a class="left carousel-control-prev" href="#" role="button"><span class="fa fa-chevron-left" style="font-size:40px; color:black;"></span></a>
+        <a class="right carousel-control-next" href="#" role="button"><span class="fa fa-chevron-right" style="font-size:40px; color:black;"></span></a>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Javascript -->
+<script src="/static/js/dataTables-extensions-1.13.6.min.js"></script>
+<script src="/static/js/clipboard.min.js"></script>
+<script src="/static/js/links.js?v={{ gs_globals['git_commit'] }}" id="ln-js" data-link-type="project"></script>
+<script src="/static/js/running_notes.js?v={{ gs_globals['git_commit'] }}" id="rn-js" data-note-type="project"></script>
+<script src="/static/js/project_samples_old.js?v={{ gs_globals['git_commit'] }}" id="projects-js" data-project="{{project}}" data-lims_uri="{{ lims_uri }}"></script>
+{% end %}
