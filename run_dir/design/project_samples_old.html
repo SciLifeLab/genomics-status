@@ -141,6 +141,7 @@ Description: Details page for a single project
     <li class="nav-item"><a class="nav-link" href="#tab_running_notes_content" role="tab" data-toggle="tab">Running Notes</a></li>
     <li class="nav-item"><a class="nav-link" href="#tab_com_content" role="tab" data-toggle="tab" id="tab_communication">User communication</a></li>
     <li class="nav-item"><a class="nav-link" href="#tab_links_content" role="tab" data-toggle="tab">Links</a></li>
+    <li class="nav-item"><a class="nav-link" href="/read_totals/{{ project }}" target="_blank" rel="noopener noreferrer">Read totals</a></li>
     <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" id="reports_dropdown">Reports</a>
       <div class="dropdown-menu" aria-labelledby="reports_dropdown">
         {% if not reports%}
@@ -357,9 +358,6 @@ Description: Details page for a single project
             <!-- Load default presets (to be filled with JS) -->
           </div>
 
-          <div class="btn-group ml-4" role="group">
-          <a class="btn btn-sm btn-outline-secondary d-flex align-items-center" href='/reads_total/{{ project }}' role="button">Reads Aggregation</a>
-          </div>
           <div class="btn-group ml-1" role="group">
           <a class="btn btn-sm btn-outline-secondary d-flex align-items-center" href='/rec_ctrl_view/{{ project }}' role="button">RecCtrl Plates</a>
           </div>

@@ -18,7 +18,7 @@ from genologics.entities import Artifact
 from ibm_cloud_sdk_core.api_exception import ApiException
 from zenpy import ZenpyException
 
-from status.flowcells import ReadsTotalDataHandler
+from status.flowcells import ReadTotalsDataHandler
 from status.reports import (
     MultiQCReportHandler,
     ProjectSummaryReportHandler,
@@ -723,7 +723,7 @@ class ProjectReadsSequencedHandler(ProjectsBaseDataHandler):
 
         summary_row = view_rows[0]
         self.set_header("Content-type", "application/json")
-        all_reads = ReadsTotalDataHandler.get_total_reads(self.application, project)
+        all_reads = ReadTotalsDataHandler.get_total_reads(self.application, project)
         reads_sum = 0
         for flowcells in all_reads.values():
             for flowcell in flowcells:

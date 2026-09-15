@@ -56,8 +56,8 @@ from status.flowcells import (
     FlowcellsHandler,
     FlowcellsInfoDataHandler,
     OldFlowcellsInfoDataHandler,
-    ReadsTotalDataHandler,
-    ReadsTotalHandler,
+    ReadTotalsDataHandler,
+    ReadTotalsHandler,
 )
 from status.hashtag_csv import HashTagCSVHandler
 from status.instruments import (
@@ -334,7 +334,7 @@ class Application(tornado.web.Application):
             ("/api/v1/presets/onloadcheck", PresetsOnLoadHandler),
             ("/api/v1/qpcr_pools", qPCRPoolsDataHandler),
             ("/api/v1/rna_report/([^/]*$)", ProjectRNAMetaDataHandler),
-            ("/api/v1/reads_total/([^/]*)$", ReadsTotalDataHandler),
+            ("/api/v1/read_totals/([^/]*)$", ReadTotalsDataHandler),
             ("/api/v1/user_management/roles_teams", RolesAndTeamsHandler),
             ("/api/v1/running_notes/([^/]*)$", RunningNotesDataHandler),
             ("/api/v1/links/([^/]*)$", LinksDataHandler),
@@ -439,7 +439,7 @@ class Application(tornado.web.Application):
             ("/project_cards", ProjectCardsHandler),
             ("/proj_meta", ProjMetaCompareHandler),
             ("/proj_summary_report/([^/]*)$", ProjectSummaryReportHandler),
-            ("/reads_total/([^/]*)$", ReadsTotalHandler),
+            ("/read_totals/([^/]*)$", ReadTotalsHandler),
             ("/rec_ctrl_view/([^/]*)$", RecCtrlDataHandler),
             ("/sample_requirements", SampleRequirementsViewHandler),
             ("/sample_requirements_preview", SampleRequirementsPreviewHandler),
@@ -607,7 +607,7 @@ class Application(tornado.web.Application):
             tornado.autoreload.watch("design/project_samples_old.html")
             tornado.autoreload.watch("design/projects.html")
             tornado.autoreload.watch("design/project_cards.html")
-            tornado.autoreload.watch("design/reads_total.html")
+            tornado.autoreload.watch("design/read_totals.html")
             tornado.autoreload.watch("design/rec_ctrl_view.html")
             tornado.autoreload.watch("design/running_notes_help.html")
             tornado.autoreload.watch("design/running_notes_tab.html")

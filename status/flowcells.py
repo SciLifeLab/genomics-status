@@ -783,15 +783,15 @@ class FlowcellLinksDataHandler(SafeHandler):
                 self.finish(json.dumps(links))
 
 
-class ReadsTotalHandler(SafeHandler):
+class ReadTotalsHandler(SafeHandler):
     """Serves external links for each project
     Links are stored as JSON in LIMS / project
-    URL: /reads_total/([^/]*)
+    URL: /read_totals/([^/]*)
     """
 
     def get(self, query):
         self.set_header("Content-type", "text/html")
-        t = self.application.loader.load("reads_total.html")
+        t = self.application.loader.load("read_totals.html")
 
         self.write(
             t.generate(
@@ -802,28 +802,53 @@ class ReadsTotalHandler(SafeHandler):
         )
 
 
-class ReadsTotalDataHandler(SafeHandler):
-    """API endpoint for reads_total data
+class ReadTotalsDataHandler(SafeHandler):
+    """API endpoint for read totals data
 
-    Loaded through /api/v1/reads_total/([^/]*)$
+    Loaded through /api/v1/read_totals/([^/]*)$
     Returns JSON with reads data for the given query
     """
+
+    UNIT_YIELD = 600_000_000
+    FLOWCELL_YIELD_FACTOR = 0.9
+    SAMPLE_YIELD_FACTOR = 0.75
 
     def get(self, query):
         if not query:
             data = {}
+            expected_min_yield_per_sample = None
+            expected_min_yield_formula_mode = None
         else:
             data = self.get_total_reads(self.application, query)
+            project_run_mode = None
+            for sample_rows in data.values():
+                for row in sample_rows:
+                    run_mode = row.get("run_mode")
+                    if run_mode:
+                        project_run_mode = run_mode
+                        break
+                if project_run_mode:
+                    break
+            (
+                expected_min_yield_per_sample,
+                expected_min_yield_formula_mode,
+            ) = self.get_expected_min_yield_per_sample(
+                self.application,
+                query,
+                list(data.keys()),
+                project_run_mode=project_run_mode,
+            )
 
         # Check if any data is HiSeq X to mark in response
-        is_hiseq_x = False
-        for sample_rows in data.values():
-            for row in sample_rows:
-                if row.get("run_mode") == "HiSeq X":
-                    is_hiseq_x = True
-                    break
+        is_hiseq_x = any(
+            row.get("run_mode") == "HiSeq X"
+            for sample_rows in data.values()
+            for row in sample_rows
+        )
 
         data["isHiseqX"] = is_hiseq_x
+        data["expectedMinYieldPerSample"] = expected_min_yield_per_sample
+        data["expectedMinYieldFormulaMode"] = expected_min_yield_formula_mode
 
         self.set_header("Content-type", "application/json")
         self.write(json.dumps(data))
@@ -832,25 +857,24 @@ class ReadsTotalDataHandler(SafeHandler):
     def get_total_reads(app, query):
         data = {}
         ordereddata = OrderedDict()
+        sample_start_key = f"{query}_"
+        sample_end_key = f"{query}_Z"
 
         # Get all flowcell info at once instead of per-row
-        fc_info_cache = {}
         fc_info_view = app.cloudant.post_view(
             db="x_flowcells",
             ddoc="info",
             view="summary",
             descending=True,
         ).get_result()["rows"]
-
-        for row in fc_info_view:
-            fc_info_cache[row["key"]] = row["value"]
+        fc_info_cache = {row["key"]: row["value"] for row in fc_info_view}
 
         xfc_view = app.cloudant.post_view(
             db="x_flowcells",
             ddoc="samples",
             view="lane_clusters",
-            start_key=query,
-            end_key=f"{query}Z",
+            start_key=sample_start_key,
+            end_key=sample_end_key,
             reduce=False,
         ).get_result()["rows"]
 
@@ -873,8 +897,8 @@ class ReadsTotalDataHandler(SafeHandler):
             db="bioinfo_analysis",
             ddoc="latest_data",
             view="sample_id",
-            start_key=[query, None, None, None],
-            end_key=[f"{query}Z", "ZZ", "ZZ", "ZZ"],
+            start_key=[sample_start_key, None, None, None],
+            end_key=[sample_end_key, "ZZ", "ZZ", "ZZ"],
         ).get_result()["rows"]
         for row in bioinfo_view:
             if row["key"][3] in data:
@@ -882,9 +906,139 @@ class ReadsTotalDataHandler(SafeHandler):
                     if row["key"][1] + ":" + row["key"][2] == fcl["fcp"]:
                         fcl["sample_status"] = row["value"]["sample_status"]
                         break  # since the row is already found
+
+        sample_view_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="samples",
+            key=query,
+        ).get_result()["rows"]
+
+        samples_by_project = {
+            row["key"]: row.get("value") or {} for row in sample_view_rows
+        }
+        project_sample_data = samples_by_project.get(query, {})
+
+        for sample_name, sample_rows in data.items():
+            sample_data = project_sample_data.get(sample_name, {})
+            lib_qc_status = ReadTotalsDataHandler._sample_passed_library_qc(sample_data)
+            for sample_row in sample_rows:
+                sample_row["lib_qc"] = lib_qc_status
+
         for key in sorted(data.keys()):
             ordereddata[key] = sorted(data[key], key=lambda d: d["fcp"])
         return ordereddata
+
+    @staticmethod
+    def _sample_passed_library_qc(sample_data):
+        if not sample_data:
+            return "-"
+
+        if "details" in sample_data and "passed_library_qc" in sample_data["details"]:
+            return sample_data["details"]["passed_library_qc"]
+
+        return "-"
+
+    @staticmethod
+    def _parse_units_ordered(value):
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        if isinstance(value, str):
+            normalized = value.strip().replace(",", ".")
+            if not normalized:
+                return None
+            try:
+                return float(normalized)
+            except ValueError:
+                return None
+
+        return None
+
+    @staticmethod
+    def get_expected_min_yield_per_sample(
+        app, query, sample_names, project_run_mode=None
+    ):
+        if not sample_names:
+            return None, None
+
+        project_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="project_id",
+            key=query,
+            include_docs=True,
+        ).get_result()["rows"]
+        if not project_rows:
+            return None, None
+
+        details = project_rows[0].get("doc", {}).get("details", {})
+        flowcell_type = str(details.get("flowcell", "")).strip()
+
+        sample_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="samples",
+            key=query,
+        ).get_result()["rows"]
+        if not sample_rows:
+            return None, None
+
+        total_samples = len(sample_rows[0].get("value") or {})
+        if total_samples == 0:
+            return None, None
+        sequencing_ordered = ReadTotalsDataHandler._parse_units_ordered(
+            details.get("sequence_units_ordered_(lanes)")
+        )
+        if flowcell_type.startswith("Universal-"):
+            if sequencing_ordered is None:
+                return None, None
+
+            return (
+                sequencing_ordered
+                * ReadTotalsDataHandler.UNIT_YIELD
+                * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
+                / total_samples
+                * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR,
+                "units",
+            )
+
+        # Prefer the run mode already loaded with the per-sample flowcell rows.
+        run_mode = str(project_run_mode or "").strip()
+        if not run_mode:
+            # Fallback for projects where the run_mode was not attached to the rows.
+            flowcell_name = str(
+                details.get("flowcell_id") or details.get("flowcell") or ""
+            ).strip()
+            if not flowcell_name:
+                return None, None
+
+            flowcell_rows = app.cloudant.post_view(
+                db="x_flowcells",
+                ddoc="info",
+                view="summary2_full_id",
+                key=flowcell_name,
+            ).get_result()["rows"]
+            if not flowcell_rows:
+                return None, None
+
+            run_mode = str(
+                flowcell_rows[0].get("value", {}).get("run_mode", "")
+            ).strip()
+
+        lane_threshold = thresholds.get(run_mode, 0)
+        if lane_threshold <= 0:
+            return None, None
+
+        return (
+            sequencing_ordered
+            * lane_threshold
+            * 1_000_000
+            * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
+            / total_samples
+            * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR,
+            "lanes",
+        )
 
 
 # Functions
